@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code-to-Video Generator Studio</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: #090a0f;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 15px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      color: #38bdf8;
+      margin-bottom: 4px;
+    }
+
+    header p {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .studio-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-width: 450px;
+      margin: 0 auto;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Aspect Ratio Selection Bar */
+    .ratio-bar {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .ratio-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .ratio-btn.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #fff;
+    }
+
+    /* Live Preview Frame Wrapper */
+    .preview-wrapper {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      min-height: 350px;
+      overflow: hidden;
+    }
+
+    .render-frame {
+      width: 180px;
+      height: 320px; /* Default 9:16 */
+      background: #000;
+      border-radius: 12px;
+      border: 2px solid #334155;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    /* Code Input Section */
+    .editor-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .editor-section label {
+      font-size: 12px;
+      color: #cbd5e1;
+      font-weight: bold;
+    }
+
+    textarea {
+      width: 100%;
+      height: 120px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #38bdf8;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 11px;
+      resize: none;
+      outline: none;
+    }
+
+    /* Action Buttons */
+    .action-bar {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .btn-run {
+      background: #0284c7;
+      color: #fff;
+    }
+
+    .btn-record {
+      background: #10b981;
+      color: #fff;
+    }
+
+    .status-msg {
+      text-align: center;
+      font-size: 11px;
+      color: #f59e0b;
+      min-height: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Code-to-Video Studio</h1>
+    <p>Paste code, select frame ratio & download video</p>
+  </header>
+
+  <div class="studio-container">
+    <!-- Ratio Selector -->
+    <div class="ratio-bar">
+      <button class="ratio-btn active" onclick="setRatio(180, 320, this)">9:16 Reel</button>
+      <button class="ratio-btn" onclick="setRatio(250, 250, this)">1:1 Square</button>
+      <button class="ratio-btn" onclick="setRatio(320, 180, this)">16:9 Landscape</button>
+      <button class="ratio-btn" onclick="setRatio(300, 300, this)">Full Box</button>
+    </div>
+
+    <!-- Preview Screen -->
+    <div class="preview-wrapper">
+      <div id="renderFrame" class="render-frame">
+        <iframe id="outputFrame" style="width:100%; height:100%; border:none;"></iframe>
+      </div>
+    </div>
+
+    <div id="statusMsg" class="status-msg"></div>
+
+    <!-- Code Input -->
+    <div class="editor-section">
+      <label>Paste HTML / CSS Animation Code:</label>
+      <textarea id="codeInput">&lt;div style="background:linear-gradient(135deg,#1877f2,#0d55b5); height:100%; display:flex; justify-content:center; align-items:center; color:white; font-family:sans-serif; text-align:center; padding:10px;"&gt;
+  &lt;h2 style="font-size:18px; animation: pulse 1.5s infinite;"&gt;Cinematic Animation&lt;/h2&gt;
+&lt;/div&gt;
+&lt;style&gt;
+  @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+&lt;/style&gt;</textarea>
+    </div>
+
+    <!-- Buttons -->
+    <div class="action-bar">
+      <button class="btn btn-run" onclick="runCode()">Run Code</button>
+      <button class="btn btn-record" onclick="recordVideo()">Record & Download</button>
+    </div>
+  </div>
+
+  <script>
+    function setRatio(w, h, btn) {
+      document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      const frame = document.getElementById('renderFrame');
+      frame.style.width = w + 'px';
+      frame.style.height = h + 'px';
+    }
+
+    function runCode() {
+      const code = document.getElementById('codeInput').value;
+      const iframe = document.getElementById('outputFrame');
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write(code);
+      doc.close();
+    }
+
+    function recordVideo() {
+      const iframe = document.getElementById('outputFrame');
+      const status = document.getElementById('statusMsg');
+      
+      try {
+        const stream = iframe.contentWindow.document.body.captureStream ? iframe.contentWindow.document.body.captureStream() : null;
+        if (!stream) {
+          alert("Direct stream recording is restricted in this browser view. Tip: Use your phone's built-in Screen Recorder while playing the animation!");
+          return;
+        }
+
+        let recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        let chunks = [];
+
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = e => {
+          let blob = new Blob(chunks, { type: 'video/webm' });
+          let url = URL.createObjectURL(blob);
+          let a = document.createElement('a');
+          a.href = url;
+          a.download = 'animation-reel.webm';
+          a.click();
+          status.innerText = "Video downloaded successfully!";
+        };
+
+        recorder.start();
+        status.innerText = "Recording started... Play animation, will stop in 5 seconds.";
+        setTimeout(() => {
+          recorder.stop();
+        }, 5000);
+
+      } catch (err) {
+        alert("Tip: Phone ki built-in screen recording use karke aap frame ko record kar sakte hain!");
+      }
+    }
+
+    window.onload = runCode;
+  </script>
+
+</body>
+</html>
